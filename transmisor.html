@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Transmisor GPS Chofer</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+
+<body>
+    <h1>Transmitiendo GPS...</h1>
+    <p id="status">Esperando GPS...</p>
+
+    <script>
+        // Pegá tu misma firebaseConfig aquí
+        const firebaseConfig = {
+            apiKey: "AIzaSyBLQTF45rPS0zUUNchDJ5DagygX8nojMxE",
+            authDomain: "colectivos-tiempo-real.firebaseapp.com",
+            databaseURL: "https://colectivos-tiempo-real-default-rtdb.firebaseio.com",
+            projectId: "colectivos-tiempo-real",
+            storageBucket: "colectivos-tiempo-real.firebasestorage.app",
+            messagingSenderId: "454978508967",
+            appId: "1:454978508967:web:be55f535a0504029b5e382"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const status = document.getElementById('status');
+
+        // Pedir permiso GPS
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition((position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const speed = position.coords.speed || 0;
+                const heading = position.coords.heading || 0;
+
+                db.ref('lines/linea_1/vehicles/interno_01').set({
+                    lat: lat,
+                    lng: lng,
+                    speed: speed,
+                    heading: heading,
+                    updated_at: Date.now(),
+                    online: true,
+                    token: 'gps_linea1_interno01'  // si ya pusiste reglas con token
+                });
+
+                status.innerHTML = `Enviado: Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}`;
+            }, (error) => {
+                status.innerHTML = 'Error GPS: ' + error.message;
+            }, { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
+        } else {
+            status.innerHTML = 'GPS no disponible en este navegador';
+        }
+    </script>
+</body>
+
+</html>
