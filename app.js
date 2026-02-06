@@ -35,6 +35,7 @@ const vehicleColors = {
 };
 
 // Escuchar todos los vehículos en tiempo real
+
 db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
     const busesDiv = document.getElementById("buses");
     busesDiv.innerHTML = "";
@@ -91,6 +92,17 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
             // Mover marcador existente
             markers[id].setLngLat(lngLat);
         }
+    });
+
+    document.getElementById('centerAllBtn').addEventListener('click', () => {
+        if (Object.keys(markers).length === 0) return;
+
+        const bounds = new mapboxgl.LngLatBounds();
+        Object.values(markers).forEach(marker => {
+            bounds.extend(marker.getLngLat());
+        });
+
+        map.fitBounds(bounds, { padding: 50, maxZoom: 16 });
     });
 
     // Centrar mapa en el primer vehículo activo (opcional)
