@@ -72,10 +72,19 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
         const lngLat = [v.lng || -58.53, v.lat || -34.72];
 
         if (!markers[id]) {
-            // Crear marcador nuevo
+            // Crear elemento HTML personalizado para el ícono
+            const el = document.createElement('div');
+            el.style.backgroundImage = `url('bus.png')`;  // ← CAMBIA ESTO
+            // O usa URL pública: url('https://img.icons8.com/fluency/48/bus.png')
+            el.style.backgroundSize = 'contain';
+            el.style.width = '48px';   // tamaño del ícono
+            el.style.height = '48px';
+            el.style.backgroundRepeat = 'no-repeat';
+            el.style.transform = `rotate(${v.heading || 0}deg)`;  // rota según dirección
+
             markers[id] = new mapboxgl.Marker({
-                color: vehicleColors[id] || '#888888',
-                scale: 1.1
+                element: el,  // ← usamos nuestro div personalizado
+                anchor: 'center'  // centra el ícono en la posición
             })
                 .setLngLat(lngLat)
                 .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`
@@ -89,8 +98,13 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
             `))
                 .addTo(map);
         } else {
-            // Mover marcador existente
+            // Solo mover y rotar el marcador existente
             markers[id].setLngLat(lngLat);
+            // Rotar el ícono (busca el elemento HTML)
+            const el = markers[id].getElement();
+            if (el) {
+                el.style.transform = `rotate(${v.heading || 0}deg)`;
+            }
         }
     });
 
