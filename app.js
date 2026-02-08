@@ -72,20 +72,21 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
         const lngLat = [v.lng || -58.53, v.lat || -34.72];
 
         if (!markers[id]) {
-            // Crear el div personalizado con la imagen
+            // Crear div personalizado
             const el = document.createElement('div');
-            el.style.backgroundImage = `url('bus.png')`;  // o tu archivo local
+            el.style.backgroundImage = `url('bus.png')`; // o tu imagen
             el.style.backgroundSize = 'contain';
             el.style.width = '48px';
             el.style.height = '48px';
             el.style.backgroundRepeat = 'no-repeat';
             el.style.backgroundPosition = 'center';
-            el.style.transformOrigin = 'center center';  // importante: rota desde el centro
-            el.style.transition = 'transform 0.3s ease'; // suave al rotar
+            el.style.transformOrigin = 'center center';
+            el.style.transition = 'transform 0.5s ease-out'; // más suave
+            el.style.willChange = 'transform'; // optimiza animaciones
 
-            // Aplicar rotación inicial
-            const initialHeading = v.heading || 0;
-            el.style.transform = `rotate(${initialHeading}deg)`;
+            // Rotación inicial
+            const heading = Number(v.heading) || 0;
+            el.style.transform = `rotate(${heading}deg)`;
 
             markers[id] = new mapboxgl.Marker({
                 element: el,
@@ -98,23 +99,26 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
             Lat: ${v.lat ? v.lat.toFixed(5) : '—'}<br>
             Lng: ${v.lng ? v.lng.toFixed(5) : '—'}<br>
             Velocidad: ${v.speed ? v.speed.toFixed(1) + ' km/h' : '—'}<br>
-            Dirección: ${initialHeading}°<br>
+            Dirección: ${heading.toFixed(0)}°<br>
             Estado: ${v.online ? 'En línea' : 'Desconectado'}
         </p>
     `))
                 .addTo(map);
 
-            // Guardar referencia al div de la imagen (para rotarlo después)
-            markers[id].customElement = el;
+            // Guardar referencia
+            markers[id]._customEl = el;
         } else {
-            // Mover posición
+            // Mover posición (obligatorio para forzar actualización)
             markers[id].setLngLat(lngLat);
 
-            // Rotar el ícono usando la referencia guardada
-            const el = markers[id].customElement;
+            // Rotar
+            const el = markers[id]._customEl;
             if (el) {
-                const heading = v.heading || 0;
+                const heading = Number(v.heading) || 0;
                 el.style.transform = `rotate(${heading}deg)`;
+                console.log(`Rotando ${id} a ${heading}°`); // para depurar
+            } else {
+                console.warn(`No se encontró _customEl para ${id}`);
             }
         }
     });
