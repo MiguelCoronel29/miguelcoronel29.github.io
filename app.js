@@ -72,28 +72,23 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
         const lngLat = [v.lng || -58.53, v.lat || -34.72];
 
         if (!markers[id]) {
-            // Contenedor padre
+            // Contenedor
             const el = document.createElement('div');
-            el.style.position = 'relative';
-            el.style.width = '60px';  // un poco más grande para ver mejor la rotación
+            el.style.width = '60px';
             el.style.height = '60px';
+            el.style.position = 'relative';
             el.style.transformOrigin = 'center center';
             el.style.transition = 'transform 0.4s ease-out';
-            el.style.willChange = 'transform';
-            el.style.pointerEvents = 'none';  // evita interferir con clics
 
             // Imagen
             const img = document.createElement('img');
-            img.src = 'bus.png'; // o 'bus.png'
+            img.src = 'bus.png'; // o 'https://img.icons8.com/fluency/48/bus.png'
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'contain';
-            img.style.transformOrigin = 'center center'; // rota la img también
+            img.style.transformOrigin = 'center center';
+            img.style.transition = 'transform 0.4s ease-out'; // rotación suave en la img
             el.appendChild(img);
-
-            // Rotación inicial
-            const heading = Number(v.heading) || 0;
-            el.style.transform = `rotate(${heading}deg)`;
 
             markers[id] = new mapboxgl.Marker({
                 element: el,
@@ -106,28 +101,30 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
             Lat: ${v.lat ? v.lat.toFixed(5) : '—'}<br>
             Lng: ${v.lng ? v.lng.toFixed(5) : '—'}<br>
             Velocidad: ${v.speed ? v.speed.toFixed(1) + ' km/h' : '—'}<br>
-            Dirección: ${heading.toFixed(0)}°<br>
+            Dirección: ${Number(v.heading || 0).toFixed(0)}°<br>
             Estado: ${v.online ? 'En línea' : 'Desconectado'}
         </p>
     `))
                 .addTo(map);
 
-            markers[id]._customEl = el;
+            // Guardar referencia al <img> directamente (más seguro)
+            markers[id]._customImg = img;
         } else {
             markers[id].setLngLat(lngLat);
 
-            const el = markers[id]._customEl;
-            if (el) {
+            const img = markers[id]._customImg;
+            if (img) {
                 const heading = Number(v.heading) || 0;
-                el.style.transform = `rotate(${heading}deg)`;
-                console.log(`Rotando ${id} a ${heading}° (aplicado)`);
+                img.style.transform = `rotate(${heading}deg)`;
+                console.log(`Rotando IMG de ${id} a ${heading}°`);
 
-                // Forzar repaint (truco para algunos navegadores/Mapbox)
-                el.style.display = 'none';
-                el.offsetHeight;  // fuerza reflow
-                el.style.display = 'block';
-            } else {
-                console.warn(`No _customEl para ${id}`);
+                // Forzar repaint en el contenedor padre
+                const el = img.parentElement;
+                if (el) {
+                    el.style.display = 'none';
+                    el.offsetHeight; // trigger reflow
+                    el.style.display = 'block';
+                }
             }
         }
     });
