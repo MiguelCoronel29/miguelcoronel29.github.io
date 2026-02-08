@@ -24,6 +24,7 @@ const map = new mapboxgl.Map({
 });
 
 const markers = {};
+const lastHeadings = {};  // ← AGREGÁ ESTA LÍNEA AQUÍ
 
 // Colores por vehículo para distinguirlos
 const vehicleColors = {
@@ -69,8 +70,6 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
         busesDiv.appendChild(div);
 
         // --- Parte 2: Marcador en el mapa ---
-        const lngLat = [v.lng || -58.53, v.lat || -34.72];
-
         if (!markers[id]) {
             // Contenedor
             const el = document.createElement('div');
@@ -87,7 +86,7 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
             img.style.height = '100%';
             img.style.objectFit = 'contain';
             img.style.transformOrigin = 'center center';
-            img.style.transition = 'transform 0.4s ease-out'; // rotación suave en la img
+            img.style.transition = 'transform 0.4s ease-out';
             el.appendChild(img);
 
             markers[id] = new mapboxgl.Marker({
@@ -107,18 +106,32 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
     `))
                 .addTo(map);
 
-            // Guardar referencia al <img> directamente (más seguro)
+            // Guardar referencia al <img>
             markers[id]._customImg = img;
+
+            // Guardar heading inicial
+            const heading = Number(v.heading);
+            if (!isNaN(heading) && heading !== 0) {
+                lastHeadings[id] = heading;
+            }
         } else {
             markers[id].setLngLat(lngLat);
 
             const img = markers[id]._customImg;
             if (img) {
-                const heading = Number(v.heading) || 0;
-                img.style.transform = `rotate(${heading}deg)`;
-                console.log(`Rotando IMG de ${id} a ${heading}°`);
+                let heading = Number(v.heading);
 
-                // Forzar repaint en el contenedor padre
+                // Si llega un heading válido y diferente de 0, actualizar
+                if (!isNaN(heading) && heading !== 0) {
+                    lastHeadings[id] = heading;
+                }
+
+                // Usar el último conocido (o 0 si nunca hubo)
+                const currentHeading = lastHeadings[id] || 0;
+                img.style.transform = `rotate(${currentHeading}deg)`;
+                console.log(`Rotando IMG de ${id} a ${currentHeading}° (último conocido)`);
+
+                // Forzar repaint (opcional pero útil)
                 const el = img.parentElement;
                 if (el) {
                     el.style.display = 'none';
