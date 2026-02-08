@@ -72,22 +72,23 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
         const lngLat = [v.lng || -58.53, v.lat || -34.72];
 
         if (!markers[id]) {
-            // Crear contenedor
+            // Contenedor padre
             const el = document.createElement('div');
-            el.style.width = '48px';
-            el.style.height = '48px';
             el.style.position = 'relative';
+            el.style.width = '60px';  // un poco más grande para ver mejor la rotación
+            el.style.height = '60px';
             el.style.transformOrigin = 'center center';
-            el.style.transition = 'transform 0.5s ease-out';
+            el.style.transition = 'transform 0.4s ease-out';
             el.style.willChange = 'transform';
+            el.style.pointerEvents = 'none';  // evita interferir con clics
 
-            // Crear imagen como <img> (más confiable que background)
+            // Imagen
             const img = document.createElement('img');
-            img.src = 'bus.png'; // O tu archivo local 'bus.png'
+            img.src = 'bus.png'; // o 'bus.png'
             img.style.width = '100%';
             img.style.height = '100%';
             img.style.objectFit = 'contain';
-            img.style.pointerEvents = 'none'; // evita que interfiera con clics
+            img.style.transformOrigin = 'center center'; // rota la img también
             el.appendChild(img);
 
             // Rotación inicial
@@ -111,20 +112,22 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
     `))
                 .addTo(map);
 
-            // Guardar referencia al contenedor (el que tiene la img)
             markers[id]._customEl = el;
         } else {
-            // Mover posición (forzar actualización de DOM)
             markers[id].setLngLat(lngLat);
 
-            // Rotar el contenedor
             const el = markers[id]._customEl;
             if (el) {
                 const heading = Number(v.heading) || 0;
                 el.style.transform = `rotate(${heading}deg)`;
                 console.log(`Rotando ${id} a ${heading}° (aplicado)`);
+
+                // Forzar repaint (truco para algunos navegadores/Mapbox)
+                el.style.display = 'none';
+                el.offsetHeight;  // fuerza reflow
+                el.style.display = 'block';
             } else {
-                console.warn(`No se encontró _customEl para ${id}`);
+                console.warn(`No _customEl para ${id}`);
             }
         }
     });
