@@ -24,7 +24,7 @@ const map = new mapboxgl.Map({
 });
 
 const markers = {};
-const lastHeadings = {}; // ← Para mantener último heading conocido
+const lastHeadings = {}; // Para mantener último heading conocido
 
 const vehicleColors = {
     'interno_01': '#00ff00',
@@ -36,12 +36,28 @@ const vehicleColors = {
 
 db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
     const busesDiv = document.getElementById("buses");
-    busesDiv.innerHTML = "";
+    busesDiv.innerHTML = "Cargando...";
 
-    const vehicles = snapshot.val();
+    let vehicles = snapshot.val();
 
-    if (!vehicles) {
+    // Soporte offline: usar datos cacheados si no hay conexión
+    if (!navigator.onLine && localStorage.getItem('lastVehicles')) {
+        vehicles = JSON.parse(localStorage.getItem('lastVehicles'));
+        console.log('Usando datos cacheados offline');
+    }
+
+    // Guardar siempre los últimos datos válidos (solo si hay conexión y datos nuevos)
+    if (navigator.onLine && vehicles && Object.keys(vehicles).length > 0) {
+        localStorage.setItem('lastVehicles', JSON.stringify(vehicles));
+    }
+
+    if (!vehicles || Object.keys(vehicles).length === 0) {
         busesDiv.innerHTML = "<p style='text-align:center;'>No hay colectivos activos en este momento</p>";
+        // Limpiar marcadores viejos si no hay datos
+        Object.keys(markers).forEach(key => {
+            markers[key].remove();
+            delete markers[key];
+        });
         return;
     }
 
@@ -69,13 +85,9 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
         const lngLat = [v.lng || -58.53, v.lat || -34.72];
 
         let heading = Number(v.heading);
-
-        // Actualizar heading solo si es válido y != 0
         if (!isNaN(heading) && heading !== 0) {
             lastHeadings[id] = heading;
         }
-
-        // Heading final: último conocido o 0
         const currentHeading = lastHeadings[id] || 0;
 
         if (!markers[id]) {
@@ -95,15 +107,14 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
             img.style.transition = 'transform 0.4s ease-out';
             el.appendChild(img);
 
-            // Rotación inicial
             el.style.transform = `rotate(${currentHeading}deg)`;
 
             markers[id] = new mapboxgl.Marker({
                 element: el,
                 anchor: 'center'
             })
-                .setLngLat(lngLat)
-                .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`
+            .setLngLat(lngLat)
+            .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`
                 <h3 style="margin:0; color:#000;">${id.toUpperCase()}</h3>
                 <p style="margin:8px 0 0;">
                     Lat: ${v.lat ? v.lat.toFixed(5) : '—'}<br>
@@ -113,7 +124,7 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
                     Estado: ${v.online ? 'En línea' : 'Desconectado'}
                 </p>
             `))
-                .addTo(map);
+            .addTo(map);
 
             markers[id]._customImg = img;
         } else {
@@ -135,7 +146,7 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
         }
     });
 
-    // Botón centrar todos (ya lo tenés)
+    // Botón centrar todos
     document.getElementById('centerAllBtn').addEventListener('click', () => {
         if (Object.keys(markers).length === 0) return;
 
@@ -146,4 +157,77 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
 
         map.fitBounds(bounds, { padding: 50, maxZoom: 16 });
     });
+});
+
+// --- TU UBICACIÓN COMO PASAJERO ---
+let myMarker = null;
+let myWatchId = null;
+
+document.getElementById('myLocationBtn').addEventListener('click', () => {
+    if (myMarker) {
+        if (myWatchId) navigator.geolocation.clearWatch(myWatchId);
+        myMarker.remove();
+        myMarker = null;
+        myWatchId = null;
+        document.getElementById('myLocationBtn').textContent = 'Mostrar mi ubicación';
+        document.getElementById('myLocationBtn').style.background = '#0066ff';
+        return;
+    }
+
+    if (navigator.geolocation) {
+        document.getElementById('myLocationBtn').textContent = 'Obteniendo ubicación...';
+        document.getElementById('myLocationBtn').style.background = '#ffaa00';
+
+        myWatchId = navigator.geolocation.watchPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                if (!myMarker) {
+                    const el = document.createElement('div');
+                    el.style.backgroundColor = '#0066ff';
+                    el.style.width = '24px';
+                    el.style.height = '24px';
+                    el.style.borderRadius = '50%';
+                    el.style.border = '3px solid white';
+                    el.style.boxShadow = '0 0 10px rgba(0,102,255,0.7)';
+                    el.style.position = 'relative';
+
+                    const inner = document.createElement('div');
+                    inner.style.width = '8px';
+                    inner.style.height = '8px';
+                    inner.style.backgroundColor = 'white';
+                    inner.style.borderRadius = '50%';
+                    inner.style.position = 'absolute';
+                    inner.style.top = '50%';
+                    inner.style.left = '50%';
+                    inner.style.transform = 'translate(-50%, -50%)';
+                    el.appendChild(inner);
+
+                    myMarker = new mapboxgl.Marker({
+                        element: el,
+                        anchor: 'center'
+                    })
+                    .setLngLat([lng, lat])
+                    .addTo(map);
+
+                    map.flyTo({ center: [lng, lat], zoom: 15 });
+                } else {
+                    myMarker.setLngLat([lng, lat]);
+                }
+
+                document.getElementById('myLocationBtn').textContent = 'Ocultar mi ubicación';
+                document.getElementById('myLocationBtn').style.background = '#ff4444';
+            },
+            (error) => {
+                console.error('Error al obtener tu ubicación:', error.message);
+                alert('No se pudo obtener tu ubicación.\nVerifica permisos y GPS activado.');
+                document.getElementById('myLocationBtn').textContent = 'Mostrar mi ubicación';
+                document.getElementById('myLocationBtn').style.background = '#0066ff';
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    } else {
+        alert('Tu navegador no soporta geolocalización.');
+    }
 });

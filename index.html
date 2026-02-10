@@ -55,12 +55,33 @@
 </head>
 
 <body>
-
     <h1>🚌 Colectivos en Tiempo Real</h1>
     <div id="buses">Cargando colectivos...</div>
     <div id="map"></div>
-    <button id="centerAllBtn" style="margin-top:10px; padding:10px 20px; font-size:16px;">Centrar en todos los
-        colectivos</button>
+
+    <!-- Botones -->
+    <button id="centerAllBtn" style="margin-top:10px; padding:10px 20px; font-size:16px;">
+        Centrar en todos los colectivos
+    </button>
+    <button id="myLocationBtn" style="margin-top:10px; padding:10px 20px; font-size:16px;">
+        Mostrar mi ubicación
+    </button>
+
+    <!-- Registro del Service Worker (mejorado) -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('Service Worker registrado con éxito:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('Fallo al registrar Service Worker:', error);
+                    });
+            });
+        }
+    </script>
+
     <script src="app.js"></script>
 </body>
 
