@@ -70,6 +70,7 @@
 
     <script>
         // Configuración Firebase (la tuya)
+        // Pegá tu misma firebaseConfig aquí
         const firebaseConfig = {
             apiKey: "AIzaSyBLQTF45rPS0zUUNchDJ5DagygX8nojMxE",
             authDomain: "colectivos-tiempo-real.firebaseapp.com",
@@ -79,7 +80,6 @@
             messagingSenderId: "454978508967",
             appId: "1:454978508967:web:be55f535a0504029b5e382"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
@@ -88,60 +88,60 @@
         const startBtn = document.getElementById('startBtn');
 
         let selectedVehicle = vehiculoSelect.value;
-        let watchId = null;  // Para detener watchPosition si es necesario
+        let intervalId = null;  // Para detener el interval
 
-        // Actualizar vehículo seleccionado
         vehiculoSelect.addEventListener('change', () => {
             selectedVehicle = vehiculoSelect.value;
-            status.innerHTML = `Listo para transmitir como ${selectedVehicle}. Presione "Iniciar Transmisión GPS"`;
+            status.innerHTML = `Listo para transmitir como ${selectedVehicle}. Presione "Iniciar"`;
         });
 
-        // Botón para iniciar (evita pedir GPS al cargar la página)
         startBtn.addEventListener('click', () => {
-            if (watchId !== null) {
-                navigator.geolocation.clearWatch(watchId);
-                watchId = null;
+            if (intervalId !== null) {
+                // Detener
+                clearInterval(intervalId);
+                intervalId = null;
                 startBtn.textContent = 'Iniciar Transmisión GPS';
                 status.innerHTML = 'Transmisión detenida.';
                 return;
             }
 
             if (navigator.geolocation) {
-                status.innerHTML = `Solicitando GPS para ${selectedVehicle}...`;
-
-                watchId = navigator.geolocation.watchPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        const speed = position.coords.speed || 0;
-                        const heading = position.coords.heading || 0;
-
-                        // Token único por vehículo
-                        const token = 'gps_linea1_' + selectedVehicle;
-
-                        db.ref(`lines/linea_1/vehicles/${selectedVehicle}`).set({
-                            lat: lat,
-                            lng: lng,
-                            speed: speed,
-                            heading: heading,
-                            updated_at: Date.now(),
-                            online: true,
-                            token: token
-                        }).then(() => {
-                            status.innerHTML = `Enviado a ${selectedVehicle}:<br>Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}<br>Vel: ${speed.toFixed(1)} km/h`;
-                        }).catch((error) => {
-                            status.innerHTML = 'Error al enviar: ' + error.message;
-                        });
-                    },
-                    (error) => {
-                        status.innerHTML = 'Error GPS: ' + error.message;
-                    },
-                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-                );
-
                 startBtn.textContent = 'Detener Transmisión';
+                status.innerHTML = `Transmitiendo cada 20s como ${selectedVehicle}...`;
+
+                // Enviar cada 20s (20000 ms)
+                intervalId = setInterval(() => {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const lat = position.coords.latitude;
+                            const lng = position.coords.longitude;
+                            const speed = position.coords.speed || 0;
+                            const heading = position.coords.heading || 0;
+
+                            const token = 'gps_linea1_' + selectedVehicle;
+
+                            db.ref(`lines/linea_1/vehicles/${selectedVehicle}`).set({
+                                lat: lat,
+                                lng: lng,
+                                speed: speed,
+                                heading: heading,
+                                updated_at: Date.now(),
+                                online: true,
+                                token: token
+                            }).then(() => {
+                                status.innerHTML = `Enviado a ${selectedVehicle}:<br>Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}<br>Vel: ${speed.toFixed(1)} km/h`;
+                            }).catch((error) => {
+                                status.innerHTML = 'Error al enviar: ' + error.message;
+                            });
+                        },
+                        (error) => {
+                            status.innerHTML = 'Error GPS: ' + error.message;
+                        },
+                        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                    );
+                }, 20000);  // ← 20 segundos, cambiá a 30000 para 30s
             } else {
-                status.innerHTML = 'GPS no disponible en este navegador';
+                status.innerHTML = 'GPS no disponible';
             }
         });
     </script>
