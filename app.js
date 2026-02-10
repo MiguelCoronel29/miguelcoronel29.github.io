@@ -34,6 +34,17 @@ const vehicleColors = {
     'interno_05': '#ffff00'
 };
 
+// Cargar tu imagen personalizada como icono nativo
+map.on('load', () => {
+    map.loadImage('bus.png', (error, image) => {  // 'bus.png' o URL completa
+        if (error) {
+            console.error('Error cargando imagen de bus:', error);
+            return;
+        }
+        map.addImage('bus-icon', image);  // nombre interno del icono
+    });
+});
+
 db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
     const busesDiv = document.getElementById("buses");
     busesDiv.innerHTML = "";
@@ -66,72 +77,40 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
         busesDiv.appendChild(div);
 
         // Marcador en el mapa
+        // ... dentro del sortedIds.forEach((id) => { ... })
+
         const lngLat = [v.lng || -58.53, v.lat || -34.72];
 
         let heading = Number(v.heading);
-
-        // Actualizar heading solo si es válido y != 0
         if (!isNaN(heading) && heading !== 0) {
             lastHeadings[id] = heading;
         }
-
-        // Heading final: último conocido o 0
         const currentHeading = lastHeadings[id] || 0;
 
         if (!markers[id]) {
-            const el = document.createElement('div');
-            el.style.width = '60px';
-            el.style.height = '60px';
-            el.style.position = 'relative';
-            el.style.transformOrigin = 'center center';
-            el.style.transition = 'transform 0.4s ease-out';
-
-            const img = document.createElement('img');
-            img.src = 'bus.png'; // o URL pública
-            img.style.width = '100%';
-            img.style.height = '100%';
-            img.style.objectFit = 'contain';
-            img.style.transformOrigin = 'center center';
-            img.style.transition = 'transform 0.4s ease-out';
-            el.appendChild(img);
-
-            // Rotación inicial
-            el.style.transform = `rotate(${currentHeading}deg)`;
-
             markers[id] = new mapboxgl.Marker({
-                element: el,
+                // Icono personalizado nativo + rotación
+                icon: 'bus-icon',          // nombre que pusimos en addImage
+                rotation: currentHeading,  // rotación nativa (¡sin desfase!)
+                scale: 1.0,                // tamaño (ajustá si es muy grande/pequeño)
                 anchor: 'center'
             })
                 .setLngLat(lngLat)
                 .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`
-                <h3 style="margin:0; color:#000;">${id.toUpperCase()}</h3>
-                <p style="margin:8px 0 0;">
-                    Lat: ${v.lat ? v.lat.toFixed(5) : '—'}<br>
-                    Lng: ${v.lng ? v.lng.toFixed(5) : '—'}<br>
-                    Velocidad: ${v.speed ? v.speed.toFixed(1) + ' km/h' : '—'}<br>
-                    Dirección: ${currentHeading.toFixed(0)}°<br>
-                    Estado: ${v.online ? 'En línea' : 'Desconectado'}
-                </p>
-            `))
+        <h3 style="margin:0; color:#000;">${id.toUpperCase()}</h3>
+        <p style="margin:8px 0 0;">
+            Lat: ${v.lat ? v.lat.toFixed(5) : '—'}<br>
+            Lng: ${v.lng ? v.lng.toFixed(5) : '—'}<br>
+            Velocidad: ${v.speed ? v.speed.toFixed(1) + ' km/h' : '—'}<br>
+            Dirección: ${currentHeading.toFixed(0)}°<br>
+            Estado: ${v.online ? 'En línea' : 'Desconectado'}
+        </p>
+    `))
                 .addTo(map);
-
-            markers[id]._customImg = img;
         } else {
             markers[id].setLngLat(lngLat);
-
-            const img = markers[id]._customImg;
-            if (img) {
-                img.style.transform = `rotate(${currentHeading}deg)`;
-                console.log(`Rotando IMG de ${id} a ${currentHeading}° (último conocido)`);
-
-                // Forzar repaint
-                const el = img.parentElement;
-                if (el) {
-                    el.style.display = 'none';
-                    el.offsetHeight;
-                    el.style.display = 'block';
-                }
-            }
+            markers[id].setRotation(currentHeading);  // rotación nativa
+            console.log(`Rotando ${id} a ${currentHeading}° (nativo con icono)`);
         }
     });
 
@@ -146,4 +125,81 @@ db.ref("lines/linea_1/vehicles").on("value", (snapshot) => {
 
         map.fitBounds(bounds, { padding: 50, maxZoom: 16 });
     });
+});
+
+// --- TU UBICACIÓN COMO PASAJERO ---
+let myMarker = null;
+let myWatchId = null;
+
+document.getElementById('myLocationBtn').addEventListener('click', () => {
+    if (myMarker) {
+        // Desactivar mi ubicación
+        if (myWatchId) navigator.geolocation.clearWatch(myWatchId);
+        myMarker.remove();
+        myMarker = null;
+        myWatchId = null;
+        document.getElementById('myLocationBtn').textContent = 'Mostrar mi ubicación';
+        document.getElementById('myLocationBtn').style.background = '#0066ff';
+        return;
+    }
+
+    if (navigator.geolocation) {
+        document.getElementById('myLocationBtn').textContent = 'Obteniendo ubicación...';
+        document.getElementById('myLocationBtn').style.background = '#ffaa00';
+
+        myWatchId = navigator.geolocation.watchPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                if (!myMarker) {
+                    // Crear marcador azul para tu posición
+                    const el = document.createElement('div');
+                    el.style.backgroundColor = '#0066ff';
+                    el.style.width = '24px';
+                    el.style.height = '24px';
+                    el.style.borderRadius = '50%';
+                    el.style.border = '3px solid white';
+                    el.style.boxShadow = '0 0 10px rgba(0,102,255,0.7)';
+                    el.style.position = 'relative';
+
+                    // Pequeño círculo interno
+                    const inner = document.createElement('div');
+                    inner.style.width = '8px';
+                    inner.style.height = '8px';
+                    inner.style.backgroundColor = 'white';
+                    inner.style.borderRadius = '50%';
+                    inner.style.position = 'absolute';
+                    inner.style.top = '50%';
+                    inner.style.left = '50%';
+                    inner.style.transform = 'translate(-50%, -50%)';
+                    el.appendChild(inner);
+
+                    myMarker = new mapboxgl.Marker({
+                        element: el,
+                        anchor: 'center'
+                    })
+                        .setLngLat([lng, lat])
+                        .addTo(map);
+
+                    // Centrar mapa en tu posición la primera vez
+                    map.flyTo({ center: [lng, lat], zoom: 15 });
+                } else {
+                    myMarker.setLngLat([lng, lat]);
+                }
+
+                document.getElementById('myLocationBtn').textContent = 'Ocultar mi ubicación';
+                document.getElementById('myLocationBtn').style.background = '#ff4444';
+            },
+            (error) => {
+                console.error('Error al obtener tu ubicación:', error.message);
+                alert('No se pudo obtener tu ubicación.\nVerifica permisos y GPS activado.');
+                document.getElementById('myLocationBtn').textContent = 'Mostrar mi ubicación';
+                document.getElementById('myLocationBtn').style.background = '#0066ff';
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    } else {
+        alert('Tu navegador no soporta geolocalización.');
+    }
 });
