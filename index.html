@@ -4,9 +4,14 @@
 <head>
     <meta charset="UTF-8" />
 
-    <!-- Código de verificación y carga de AdSense (pegado aquí para verificación y funcionamiento) -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1831930018468380"
-         crossorigin="anonymous"></script>
+    <!-- Google Analytics 4 - Etiqueta de seguimiento -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-263WKQTP4"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-263WKQTP4');
+    </script>
 
     <title>Colectivos en Tiempo Real - Guernica y Zona</title>
 
@@ -14,10 +19,14 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-    <!-- Mapbox CSS y JS (versión más reciente para mejor compatibilidad) -->
+    <!-- Mapbox CSS y JS -->
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.5.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.5.0/mapbox-gl.js"></script>
     <link rel="manifest" href="manifest.json">
+
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1831930018468380"
+        crossorigin="anonymous"></script>
 
     <style>
         body {
@@ -91,9 +100,7 @@
 
     <!-- Google AdSense Banner (contenedor y push) -->
     <ins class="adsbygoogle" style="display:block; margin: 15px auto; text-align:center;"
-        data-ad-client="ca-pub-1831930018468380" 
-        data-ad-slot="2889817674" 
-        data-ad-format="auto"
+        data-ad-client="ca-pub-1831930018468380" data-ad-slot="2889817674" data-ad-format="auto"
         data-full-width-responsive="true"></ins>
     <script>
         (adsbygoogle = window.adsbygoogle || []).push({});
